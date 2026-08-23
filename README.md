@@ -25,13 +25,6 @@ Google Form  →  Google Sheet  →  Apps Script (Code.gs)  →  JSON  →  inde
    (input)         (BD)              (API/puente)                    (dashboard)
 ```
 
-1. El operador llena el Form después de cada lavado (fecha, placa, tipo de lavado, medio de pago, costo, etc.).
-2. La respuesta cae automáticamente como una fila nueva en el Google Sheet.
-3. `Code.gs`, publicado como aplicación web, lee el Sheet y devuelve todas las filas en formato JSON a quien le pregunte.
-4. `index.html` hace un `fetch()` a esa URL cada vez que se abre (y cada 5 minutos automáticamente), procesa los datos en el navegador y dibuja los KPIs y gráficos.
-
-No hay servidor propio corriendo 24/7: todo vive en la nube de Google (gratis) y el sitio estático en GitHub Pages (gratis).
-
 ## ✨ Funcionalidades
 
 - **KPIs generales:** ingreso total, autos lavados, ticket promedio, % de lavados con factura.
