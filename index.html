@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoGurú · Panel de control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<style>
+  :root{
+    --ink:#12302c;
+    --paper:#f3f6f0;
+    --card:#ffffff;
+    --teal:#1f7a6c;
+    --teal-dark:#155249;
+    --gold:#e8a33d;
+    --blue:#2f6690;
+    --muted:#5e6f6a;
+    --line:#e2e8e2;
+    --danger:#c1443c;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3, .kpi-value{ font-family:'Bricolage Grotesque', system-ui, sans-serif; }
+
+  /* ---------- Header ---------- */
+  header{
+    background:var(--ink);
+    color:#fff;
+    padding:22px 20px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute;
+    right:-40px; top:-60px;
+    width:200px; height:200px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(232,163,61,.35), transparent 70%);
+  }
+  header h1{
+    margin:0;
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:.2px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  header p{
+    margin:6px 0 0;
+    color:#c8dcd6;
+    font-size:14px;
+  }
+  #lastUpdate{ font-size:12px; color:#9fb8b1; margin-top:10px; }
+
+  main{ max-width:1080px; margin:0 auto; padding:18px 16px 60px; }
+
+  /* ---------- Section titles ---------- */
+  .section-title{
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--muted);
+    font-weight:700;
+    margin:30px 0 12px;
+  }
+
+  /* ---------- KPI grid ---------- */
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+  }
+  .kpi-card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:16px;
+    box-shadow:0 1px 3px rgba(18,48,44,.08);
+    border:1px solid var(--line);
+  }
+  .kpi-card .label{
+    font-size:12.5px;
+    color:var(--muted);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .kpi-value{
+    font-size:24px;
+    font-weight:800;
+    line-height:1.1;
+  }
+  .kpi-card.accent-teal .kpi-value{ color:var(--teal-dark); }
+  .kpi-card.accent-gold .kpi-value{ color:#a86a1a; }
+  .kpi-card.accent-blue .kpi-value{ color:var(--blue); }
+  .kpi-sub{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+
+  /* ---------- Chart cards ---------- */
+  .chart-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+  @media(min-width:760px){
+    .chart-grid{ grid-template-columns:1fr 1fr; }
+    .kpi-grid{ grid-template-columns:repeat(4,1fr); }
+  }
+  .chart-card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:16px;
+    border:1px solid var(--line);
+    box-shadow:0 1px 3px rgba(18,48,44,.06);
+  }
+  .chart-card h3{
+    font-size:14.5px;
+    margin:0 0 12px;
+    font-weight:700;
+  }
+  .chart-card.wide{ grid-column:1 / -1; }
+  canvas{ max-height:260px; }
+
+  /* ---------- Plate search (signature element) ---------- */
+  .plate-panel{
+    background:linear-gradient(180deg,#f4f6f2,#e9ede7);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-top:6px;
+  }
+  .plate-panel h3{ margin:0 0 4px; font-size:16px; }
+  .plate-panel p.hint{ margin:0 0 14px; font-size:13px; color:var(--muted); }
+
+  .plate-input-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .plate-shell{
+    display:flex;
+    align-items:stretch;
+    border-radius:10px;
+    overflow:hidden;
+    border:3px solid #111;
+    background:#f4d94e;
+    flex:1 1 220px;
+    min-width:220px;
+  }
+  .plate-shell .flag{
+    width:26px;
+    background:repeating-linear-gradient(180deg,#d1272a 0 33%, #fff 33% 66%, #d1272a 66% 100%);
+    flex-shrink:0;
+  }
+  .plate-shell input{
+    border:none;
+    background:transparent;
+    padding:12px 10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    width:100%;
+    color:#161616;
+  }
+  .plate-shell input:focus{ outline:none; }
+  .plate-shell input::placeholder{ color:#5a4d12; opacity:.55; letter-spacing:2px;}
+
+  button.search-btn{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:0 22px;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  button.search-btn:hover{ background:var(--teal-dark); }
+
+  #searchResults{ margin-top:18px; }
+  .client-summary{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .client-summary .pill{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:13px;
+  }
+  .client-summary .pill b{ display:block; font-size:16px; font-family:'Bricolage Grotesque',sans-serif; }
+
+  .visit-list{ display:flex; flex-direction:column; gap:8px; }
+  .visit-item{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    font-size:13.5px;
+  }
+  .visit-item .date{ font-weight:700; color:var(--teal-dark); min-width:90px; }
+  .visit-item .tipo{ flex:1; min-width:140px; }
+  .visit-item .costo{ font-weight:700; }
+  .visit-item .medio{ color:var(--muted); font-size:12.5px; }
+
+  .empty-state, .loading-state{
+    text-align:center;
+    padding:26px 10px;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .error-state{
+    background:#fdecea;
+    border:1px solid #f3c2bc;
+    color:var(--danger);
+    padding:12px 14px;
+    border-radius:10px;
+    font-size:13.5px;
+  }
+
+  footer{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--muted);
+    padding:20px;
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:8px;
+    max-width:1080px;
+    margin:0 auto;
+    padding:14px 16px 0;
+  }
+  .tab-btn{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 16px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .tab-btn.active{
+    background:var(--ink);
+    color:#fff;
+    border-color:var(--ink);
+  }
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+
+  /* ---------- Filtro de mes/día ---------- */
+  .filter-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .filter-bar label{ font-size:13.5px; font-weight:600; color:var(--muted); }
+  .filter-bar select, .filter-bar input[type="date"]{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 12px;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .filter-bar select{ flex:1 1 160px; max-width:220px; }
+  .filter-bar input[type="date"]{ flex:1 1 150px; max-width:170px; }
+  .clear-day-btn{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    width:36px; height:36px;
+    color:var(--muted);
+    font-weight:700;
+    cursor:pointer;
+  }
+  .clear-day-btn:hover{ color:var(--danger); border-color:var(--danger); }
+  .filter-hint{
+    font-size:12px;
+    color:var(--muted);
+    margin:6px 0 0;
+  }
+
+  /* ---------- Medios de pago: torta + tabla lateral ---------- */
+  .medio-pago-layout{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .medio-pago-donut{ max-width:240px; margin:0 auto; }
+  @media(min-width:560px){
+    .medio-pago-layout{ flex-direction:row; align-items:center; gap:36px; }
+    .medio-pago-donut{ flex:0 0 260px; margin:0; }
+    #medioPagoTabla{ flex:1; }
+  }
+  table.mini-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12.5px;
+  }
+  table.mini-table th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:600;
+    padding:4px 6px;
+    border-bottom:1px solid var(--line);
+  }
+  table.mini-table td{
+    padding:6px;
+    border-bottom:1px solid var(--line);
+  }
+  table.mini-table td:nth-child(2), table.mini-table td:nth-child(3),
+  table.mini-table th:nth-child(2), table.mini-table th:nth-child(3){
+    text-align:right;
+  }
+  table.mini-table tfoot td{
+    font-weight:700;
+    border-bottom:none;
+    border-top:2px solid var(--line);
+  }
+  table.mini-table .dot{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    margin-right:6px;
+  }
+
+  /* ---------- Access gate ---------- */
+  #accessGate{
+    position:fixed; inset:0;
+    background:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+    padding:20px;
+  }
+  #accessGate .box{
+    background:#fff;
+    border-radius:var(--radius);
+    padding:28px 24px;
+    max-width:320px;
+    width:100%;
+    text-align:center;
+  }
+  #accessGate h2{ margin:0 0 6px; font-size:20px; }
+  #accessGate p{ margin:0 0 16px; font-size:13.5px; color:var(--muted); }
+  #accessGate input{
+    width:100%;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    font-size:16px;
+    text-align:center;
+    margin-bottom:10px;
+    box-sizing:border-box;
+  }
+  #accessGate button{
+    width:100%;
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:12px;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+  #accessGate .gateError{ color:var(--danger); font-size:12.5px; margin-top:8px; min-height:16px; }
+</style>
+</head>
+<body>
+
+<div id="accessGate">
+  <div class="box">
+    <div style="font-size:30px;">🔒</div>
+    <h2>AutoGurú</h2>
+    <p>Ingresa la clave de acceso para ver el panel.</p>
+    <input id="gateInput" type="password" placeholder="Clave">
+    <button id="gateBtn">Entrar</button>
+    <div class="gateError" id="gateError"></div>
+  </div>
+</div>
+
+<header>
+  <h1>🚘 AutoGurú</h1>
+  <p>Panel de control del Car Wash</p>
+  <div id="lastUpdate">Cargando datos…</div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="tabResumen">📊 Resumen</button>
+  <button class="tab-btn" data-tab="tabClientes">🔍 Clientes</button>
+</nav>
+
+<main>
+
+<section id="tabResumen" class="tab-content active">
+
+  <div class="filter-bar">
+    <label for="filtroMes">📅 Mes:</label>
+    <select id="filtroMes">
+      <option value="todos">Todos los meses</option>
+    </select>
+    <label for="filtroDia">📆 Día:</label>
+    <input type="date" id="filtroDia">
+    <button id="btnLimpiarDia" class="clear-day-btn" title="Quitar filtro de día">✕</button>
+  </div>
+  <p class="filter-hint">Si eliges un día puntual, tiene prioridad sobre el filtro de mes.</p>
+
+  <div class="section-title">Resumen general</div>
+  <div class="kpi-grid">
+    <div class="kpi-card accent-teal">
+      <div class="label">💰 Ingreso total</div>
+      <div class="kpi-value" id="kpiIngreso">—</div>
+    </div>
+    <div class="kpi-card accent-blue">
+      <div class="label">🚗 Autos lavados</div>
+      <div class="kpi-value" id="kpiAutos">—</div>
+    </div>
+    <div class="kpi-card accent-gold">
+      <div class="label">🎟️ Ticket promedio</div>
+      <div class="kpi-value" id="kpiTicket">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">🧾 % con factura</div>
+      <div class="kpi-value" id="kpiFactura">—</div>
+      <div class="kpi-sub" id="kpiFacturaSub"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Tendencia</div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>Ingresos por mes</h3>
+      <canvas id="chartIngresosMes"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Autos lavados por mes</h3>
+      <canvas id="chartAutosMes"></canvas>
+    </div>
+    <div class="chart-card wide">
+      <h3>Lavados por día de la semana</h3>
+      <canvas id="chartDiaSemana"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">💰 Dónde está la plata</div>
+  <div class="chart-grid">
+    <div class="chart-card wide">
+      <h3>Medios de pago</h3>
+      <div class="medio-pago-layout">
+        <div class="medio-pago-donut"><canvas id="chartMedioPago"></canvas></div>
+        <div id="medioPagoTabla"></div>
+      </div>
+    </div>
+    <div class="chart-card wide">
+      <h3>Servicios: cantidad vs. ingreso generado</h3>
+      <canvas id="chartServicios"></canvas>
+    </div>
+  </div>
+
+</section>
+
+<section id="tabClientes" class="tab-content">
+  <div class="plate-panel">
+    <h3>🔍 Historial por placa</h3>
+    <p class="hint">Escribe la placa del vehículo para ver todos sus lavados anteriores.</p>
+    <div class="plate-input-row">
+      <div class="plate-shell">
+        <div class="flag"></div>
+        <input id="placaInput" type="text" placeholder="ABC-123" maxlength="10">
+      </div>
+      <button class="search-btn" id="btnBuscar">Buscar</button>
+    </div>
+    <div id="searchResults"></div>
+  </div>
+</section>
+
+</main>
+
+<footer>AutoGurú · Dashboard interno</footer>
+
+<script>
+/* =========================================================
+   CONFIGURACIÓN
+   =========================================================
+   1) URL de tu Apps Script (termina en /exec).
+   2) Cambiar USE_MOCK_DATA a false cuando la URL esté conectada.
+========================================================= */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz9qV65y77pKT1VzLc3tufsxbcbYs6RVa6jyGbRaRBirazY8poG0Re-WhuKCR1gX0fa/exec";
+const USE_MOCK_DATA = false;
+
+/* Clave simple para que solo quien la conozca vea el panel.
+   NO es seguridad real (cualquiera con conocimientos técnicos puede
+   ver el código fuente y saltarla) — es solo un filtro para visitas
+   casuales. Cambiala por lo que quieras. */
+const CLAVE_ACCESO = "ccanto1301";
+
+/* Refresca los datos solos cada 5 minutos */
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+function generarDataDemo(){
+  const marcas = ["Toyota","Nizan","Hiunday Auto","Kia Camioneta","Ford Camioneta"];
+  const tipos = ["Lavado Motor","Lavado Básico (Adentro & Afuera)","Lavado Fuera","Lavado Completo (Motor, Chasis, Fuera y Dentro)","Lavado de Salón","Pulido con cerámico"];
+  const preciosBase = {"Lavado Motor":25,"Lavado Básico (Adentro & Afuera)":20,"Lavado Fuera":15,"Lavado Completo (Motor, Chasis, Fuera y Dentro)":45,"Lavado de Salón":35,"Pulido con cerámico":90};
+  const medios = ["Yape","Plin","Efectivo","Transferencia BCP","POS"];
+  const placas = ["ABC-123","XYZ-789","LMD-456","QRT-321","JJK-908","ZZP-214"];
+  const rows = [];
+  const start = new Date(2026,0,1);
+  for(let i=0;i<620;i++){
+    const d = new Date(start.getTime() + Math.random()*230*24*3600*1000);
+    const tipo = tipos[Math.floor(Math.random()*tipos.length)];
+    const base = preciosBase[tipo];
+    const costo = (base + (Math.random()*10-5)).toFixed(2);
+    rows.push({
+      "Fecha Lavado": d.toISOString().slice(0,10),
+      "Marca": marcas[Math.floor(Math.random()*marcas.length)],
+      "Placa": placas[Math.floor(Math.random()*placas.length)],
+      "Tipo lavado": tipo,
+      "Medio de Pago": medios[Math.floor(Math.random()*medios.length)],
+      "¿Emite factura?": Math.random() > 0.6 ? "Sí" : "No",
+      "Costo Lavado": costo,
+      "Observación Cliente": ""
+    });
+  }
+  return rows;
+}
+
+/* Convierte encabezados como "4. 📋 Tipo Lavado" en algo comparable: "tipo lavado" */
+function normalizeHeader(s){
+  return String(s)
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9¿?\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+/* Toma una fila cruda del Sheet (con los nombres de columna que sean)
+   y la convierte a un objeto con nombres fijos que el resto del
+   dashboard usa siempre: fecha, marca, placa, tipo, medioPago,
+   factura, costo, observacion. Así, aunque cambies el texto exacto
+   de una pregunta del Form, el dashboard sigue funcionando. */
+function mapearFila(row){
+  const out = { fecha:null, marca:null, placa:null, tipo:null, medioPago:null, factura:null, costo:null, observacion:null };
+  Object.keys(row).forEach(h=>{
+    const n = normalizeHeader(h);
+    const v = row[h];
+    if(n.includes("fecha")) out.fecha = v;
+    else if(n.includes("placa")) out.placa = v;
+    else if(n.includes("tipo") && n.includes("lavado")) out.tipo = v;
+    else if(n.includes("marca") && !n.includes("temporal")) out.marca = v;
+    else if(n.includes("pago")) out.medioPago = v;
+    else if(n.includes("factura")) out.factura = v;
+    else if(n.includes("costo")) out.costo = v;
+    else if(n.includes("observ")) out.observacion = v;
+  });
+  return out;
+}
+
+function parseCosto(v){
+  if(v === undefined || v === null) return 0;
+  const n = parseFloat(String(v).replace(/[^\d.,-]/g,"").replace(",","."));
+  return isNaN(n) ? 0 : n;
+}
+
+/* Junta variantes de escritura del medio de pago (Efectivo / EFECTIVO / efectivo)
+   en una sola etiqueta, usando mayúscula inicial prolija para mostrar. */
+function normalizarMedioPago(v){
+  if(!v) return "Sin dato";
+  const limpio = String(v).trim();
+  if(!limpio) return "Sin dato";
+  const clave = normalizeHeader(limpio);
+  const conocidos = { "yape":"Yape", "plin":"Plin", "efectivo":"Efectivo", "pos":"POS" };
+  if(conocidos[clave]) return conocidos[clave];
+  if(clave.includes("transferencia")) return "Transferencia BCP";
+  // Si no coincide con nada conocido, al menos deja Mayúscula inicial pareja
+  return limpio.charAt(0).toUpperCase() + limpio.slice(1).toLowerCase();
+}
+
+function parseFecha(v){
+  if(!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* Devuelve solo "DD/MM/YYYY" a partir de un valor de fecha (string ISO u otro).
+   Trabaja con el texto directamente para no sufrir corrimientos de un día
+   por zona horaria. */
+function soloFecha(v){
+  if(!v) return "—";
+  const s = String(v);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d = parseFecha(v);
+  if(!d) return s;
+  return String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0") + "/" + d.getFullYear();
+}
+
+/* Parte "YYYY-MM-DD" de una fecha, para ordenar de forma segura como texto
+   (evita bugs de Date/zona horaria en el ordenamiento). */
+function clavePorFecha(v){
+  if(!v) return "";
+  const s = String(v);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[0] : s;
+}
+
+function soles(n){
+  return "S/. " + n.toLocaleString("es-PE", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+async function cargarDatos(){
+  if(USE_MOCK_DATA){
+    return generarDataDemo();
+  }
+  const res = await fetch(APPS_SCRIPT_URL);
+  if(!res.ok) throw new Error("No se pudo conectar con la hoja de datos.");
+  const data = await res.json();
+  if(data && data.error) throw new Error(data.error);
+  return data;
+}
+
+async function cargarYMapearDatos(){
+  const crudos = await cargarDatos();
+  return crudos.map(mapearFila);
+}
+
+let REGISTROS = [];
+let mesSeleccionado = "todos"; // "todos" o "YYYY-MM"
+let diaSeleccionado = "";      // "" o "YYYY-MM-DD" (si hay valor, manda sobre el mes)
+
+/* Devuelve los registros que deben usar los gráficos y KPIs del Resumen,
+   respetando el filtro de día (si hay) o el de mes. La búsqueda por placa
+   NO usa esto: el historial de un cliente siempre debe verse completo. */
+function datosActivos(){
+  if(diaSeleccionado) return REGISTROS.filter(r => clavePorFecha(r.fecha) === diaSeleccionado);
+  if(mesSeleccionado === "todos") return REGISTROS;
+  return REGISTROS.filter(r => clavePorFecha(r.fecha).slice(0,7) === mesSeleccionado);
+}
+
+/* Llena el <select> de meses con los meses que realmente existen en los datos. */
+function poblarFiltroMes(){
+  const sel = document.getElementById("filtroMes");
+  if(!sel) return;
+  const valorPrevio = sel.value || "todos";
+
+  const claves = new Set();
+  REGISTROS.forEach(r=>{
+    const k = clavePorFecha(r.fecha).slice(0,7); // "YYYY-MM"
+    if(k) claves.add(k);
+  });
+  const ordenadas = Array.from(claves).sort(); // ascendente
+
+  sel.innerHTML = '<option value="todos">Todos los meses</option>' +
+    ordenadas.map(k=>{
+      const [y,m] = k.split("-");
+      const nombre = MESES[parseInt(m,10)-1] || m;
+      return `<option value="${k}">${nombre} ${y}</option>`;
+    }).join("");
+
+  // mantiene la selección previa si sigue existiendo
+  if(ordenadas.includes(valorPrevio) || valorPrevio === "todos"){
+    sel.value = valorPrevio;
+    mesSeleccionado = valorPrevio;
+  }else{
+    sel.value = "todos";
+    mesSeleccionado = "todos";
+  }
+}
+
+function renderTodo(){
+  poblarFiltroMes();
+  renderKPIs();
+  renderChartIngresosMes();
+  renderChartAutosMes();
+  renderChartMedioPago();
+  renderChartDiaSemana();
+  renderChartServicios();
+}
+
+function renderKPIs(){
+  const datos = datosActivos();
+  const total = datos.reduce((s,r)=> s + parseCosto(r.costo), 0);
+  const autos = datos.length;
+  const ticket = autos ? total/autos : 0;
+  const conFactura = datos.filter(r => {
+    const f = normalizeHeader(r.factura || "");
+    return f === "si";
+  }).length;
+  const pctFactura = autos ? (conFactura/autos*100) : 0;
+
+  document.getElementById("kpiIngreso").textContent = soles(total);
+  document.getElementById("kpiAutos").textContent = autos.toLocaleString("es-PE");
+  document.getElementById("kpiTicket").textContent = soles(ticket);
+  document.getElementById("kpiFactura").textContent = pctFactura.toFixed(0) + "%";
+  document.getElementById("kpiFacturaSub").textContent = conFactura + " de " + autos + " lavados";
+}
+
+function agruparPorMes(){
+  const datos = datosActivos();
+  const mapa = {}; // "2026-01" -> {ingreso, autos}
+  datos.forEach(r=>{
+    const f = parseFecha(r.fecha);
+    if(!f) return;
+    const key = f.getFullYear() + "-" + String(f.getMonth()+1).padStart(2,"0");
+    if(!mapa[key]) mapa[key] = {ingreso:0, autos:0, mesIdx:f.getMonth()};
+    mapa[key].ingreso += parseCosto(r.costo);
+    mapa[key].autos += 1;
+  });
+  const keys = Object.keys(mapa).sort();
+  return {
+    labels: keys.map(k => MESES[mapa[k].mesIdx]),
+    ingresos: keys.map(k => Number(mapa[k].ingreso.toFixed(2))),
+    autos: keys.map(k => mapa[k].autos)
+  };
+}
+
+let charts = {};
+function destruirSiExiste(key){ if(charts[key]){ charts[key].destroy(); } }
+if(window.ChartDataLabels){ Chart.register(ChartDataLabels); }
+Chart.defaults.set('plugins.datalabels', { display:false }); // apagado salvo que un gráfico lo pida
+
+function renderChartIngresosMes(){
+  const {labels, ingresos} = agruparPorMes();
+  destruirSiExiste("ingresosMes");
+  charts.ingresosMes = new Chart(document.getElementById("chartIngresosMes"), {
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Ingresos", data:ingresos, backgroundColor:"#1f7a6c", borderRadius:6 }] },
+    options:{
+      layout:{ padding:{ top:22 } },
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          display:true,
+          anchor:"end",
+          align:"top",
+          color:"#12302c",
+          font:{ weight:700, size:11 },
+          formatter:(v)=> "S/." + v.toLocaleString("es-PE", {maximumFractionDigits:0})
+        }
+      },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+}
+
+function renderChartAutosMes(){
+  const {labels, autos} = agruparPorMes();
+  destruirSiExiste("autosMes");
+  charts.autosMes = new Chart(document.getElementById("chartAutosMes"), {
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Autos", data:autos, backgroundColor:"#2f6690", borderRadius:6 }] },
+    options:{
+      layout:{ padding:{ top:22 } },
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          display:true,
+          anchor:"end",
+          align:"top",
+          color:"#12302c",
+          font:{ weight:700, size:11 }
+        }
+      },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+}
+
+function renderChartMedioPago(){
+  const datos = datosActivos();
+  const mapa = {}; // medio -> {cantidad, monto}
+  datos.forEach(r=>{
+    const m = normalizarMedioPago(r.medioPago);
+    if(!mapa[m]) mapa[m] = {cantidad:0, monto:0};
+    mapa[m].cantidad += 1;
+    mapa[m].monto += parseCosto(r.costo);
+  });
+  const labels = Object.keys(mapa).sort((a,b)=> mapa[b].monto - mapa[a].monto);
+  const montos = labels.map(l=>Number(mapa[l].monto.toFixed(2)));
+  const totalMonto = montos.reduce((s,v)=>s+v,0);
+
+  destruirSiExiste("medioPago");
+  charts.medioPago = new Chart(document.getElementById("chartMedioPago"), {
+    type:"doughnut",
+    data:{ labels, datasets:[{ data:montos, backgroundColor:["#1f7a6c","#e8a33d","#2f6690","#c1443c","#7d8f89","#a86a1a"] }] },
+    options:{
+      plugins:{
+        legend:{ display:false },
+        datalabels:{
+          display:(ctx)=> totalMonto>0 && (ctx.dataset.data[ctx.dataIndex]/totalMonto) > 0.08,
+          color:"#fff",
+          font:{ weight:700, size:11 },
+          formatter:(v)=> "S/." + v.toLocaleString("es-PE",{maximumFractionDigits:0})
+        },
+        tooltip:{
+          callbacks:{
+            label:(ctx)=> `${ctx.label}: ${soles(ctx.parsed)}`
+          }
+        }
+      }
+    }
+  });
+
+  // Cuadro lateral con el detalle de cada medio (útil para los que casi no se ven en la torta)
+  const tabla = document.getElementById("medioPagoTabla");
+  if(tabla){
+    let html = '<table class="mini-table"><thead><tr><th>Medio</th><th>Lavados</th><th>Monto</th></tr></thead><tbody>';
+    labels.forEach((l,i)=>{
+      html += `<tr>
+        <td><span class="dot" style="background:${["#1f7a6c","#e8a33d","#2f6690","#c1443c","#7d8f89","#a86a1a"][i % 6]}"></span>${l}</td>
+        <td>${mapa[l].cantidad}</td>
+        <td>${soles(mapa[l].monto)}</td>
+      </tr>`;
+    });
+    html += `</tbody><tfoot><tr><td>Total</td><td>${datos.length}</td><td>${soles(totalMonto)}</td></tr></tfoot></table>`;
+    tabla.innerHTML = html;
+  }
+}
+
+function renderChartDiaSemana(){
+  const datos = datosActivos();
+  const conteo = new Array(7).fill(0);
+  datos.forEach(r=>{
+    const f = parseFecha(r.fecha);
+    if(!f) return;
+    conteo[f.getDay()] += 1;
+  });
+  const orden = [1,2,3,4,5,6,0]; // Lun..Dom
+  destruirSiExiste("diaSemana");
+  charts.diaSemana = new Chart(document.getElementById("chartDiaSemana"), {
+    type:"bar",
+    data:{
+      labels: orden.map(i=>DIAS[i]),
+      datasets:[{ label:"Lavados", data: orden.map(i=>conteo[i]), backgroundColor:"#e8a33d", borderRadius:6 }]
+    },
+    options:{
+      layout:{ padding:{ top:22 } },
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          display:true,
+          anchor:"end",
+          align:"top",
+          color:"#12302c",
+          font:{ weight:700, size:11 }
+        }
+      },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+}
+
+function renderChartServicios(){
+  const datos = datosActivos();
+  const mapa = {}; // tipo -> {cantidad, ingreso}
+  datos.forEach(r=>{
+    const t = r.tipo || "Otros";
+    if(!mapa[t]) mapa[t] = {cantidad:0, ingreso:0};
+    mapa[t].cantidad += 1;
+    mapa[t].ingreso += parseCosto(r.costo);
+  });
+  const labels = Object.keys(mapa).sort((a,b)=> mapa[b].cantidad - mapa[a].cantidad).slice(0,8);
+  destruirSiExiste("servicios");
+  charts.servicios = new Chart(document.getElementById("chartServicios"), {
+    type:"bar",
+    data:{
+      labels,
+      datasets:[
+        { label:"Cantidad de lavados", data: labels.map(l=>mapa[l].cantidad), backgroundColor:"#2f6690", borderRadius:5 },
+        { label:"Ingreso (S/.)", data: labels.map(l=>Number(mapa[l].ingreso.toFixed(2))), backgroundColor:"#e8a33d", borderRadius:5 }
+      ]
+    },
+    options:{
+      indexAxis:"y",
+      plugins:{ legend:{position:"bottom"} },
+      scales:{ x:{ beginAtZero:true } }
+    }
+  });
+}
+
+/* ---------- Búsqueda por placa ---------- */
+function normalizarPlaca(p){
+  return String(p||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+}
+
+const VISITAS_POR_PAGINA = 15;
+let visitasActuales = [];
+let visitasMostradas = 0;
+
+function buscarPlaca(){
+  const term = normalizarPlaca(document.getElementById("placaInput").value);
+  const cont = document.getElementById("searchResults");
+  if(!term){
+    cont.innerHTML = '<div class="empty-state">Escribe una placa para buscar.</div>';
+    return;
+  }
+  const visitas = REGISTROS
+    .filter(r => normalizarPlaca(r.placa) === term)
+    .sort((a,b)=> clavePorFecha(b.fecha).localeCompare(clavePorFecha(a.fecha)));
+
+  if(visitas.length === 0){
+    cont.innerHTML = '<div class="empty-state">No se encontraron lavados para esa placa.</div>';
+    return;
+  }
+
+  visitasActuales = visitas;
+  visitasMostradas = 0;
+
+  const totalGastado = visitas.reduce((s,r)=> s + parseCosto(r.costo), 0);
+  const promedio = totalGastado / visitas.length;
+  const ultimaVisita = visitas[0].fecha;
+
+  let html = '<div class="client-summary">';
+  html += `<div class="pill">Visitas totales<b>${visitas.length}</b></div>`;
+  html += `<div class="pill">Total gastado<b>${soles(totalGastado)}</b></div>`;
+  html += `<div class="pill">Promedio por visita<b>${soles(promedio)}</b></div>`;
+  html += `<div class="pill">Última visita<b>${soloFecha(ultimaVisita)}</b></div>`;
+  html += '</div>';
+  html += '<div class="visit-list" id="visitList"></div>';
+  html += '<div id="visitPagerWrap" style="text-align:center;margin-top:12px;"></div>';
+
+  cont.innerHTML = html;
+  renderMasVisitas();
+}
+
+function renderMasVisitas(){
+  const listEl = document.getElementById("visitList");
+  const pagerWrap = document.getElementById("visitPagerWrap");
+  const siguienteLote = visitasActuales.slice(visitasMostradas, visitasMostradas + VISITAS_POR_PAGINA);
+
+  siguienteLote.forEach(v=>{
+    const item = document.createElement("div");
+    item.className = "visit-item";
+    item.innerHTML = `
+      <span class="date">${soloFecha(v.fecha)}</span>
+      <span class="tipo">${v.tipo || "—"}</span>
+      <span class="medio">${v.medioPago || "—"}</span>
+      <span class="costo">${soles(parseCosto(v.costo))}</span>
+    `;
+    listEl.appendChild(item);
+  });
+
+  visitasMostradas += siguienteLote.length;
+
+  if(visitasMostradas < visitasActuales.length){
+    pagerWrap.innerHTML = `<button class="search-btn" id="btnMasVisitas" style="padding:10px 22px;">Mostrar más (${visitasActuales.length - visitasMostradas} restantes)</button>`;
+    document.getElementById("btnMasVisitas").addEventListener("click", renderMasVisitas);
+  }else{
+    pagerWrap.innerHTML = "";
+  }
+}
+
+document.getElementById("btnBuscar").addEventListener("click", buscarPlaca);
+document.getElementById("placaInput").addEventListener("keydown", e=>{ if(e.key === "Enter") buscarPlaca(); });
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(s=>s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+  });
+});
+
+/* ---------- Filtro de mes ---------- */
+document.getElementById("filtroMes").addEventListener("change", (e)=>{
+  mesSeleccionado = e.target.value;
+  rerenderResumenFiltrado();
+});
+
+/* ---------- Filtro de día ---------- */
+document.getElementById("filtroDia").addEventListener("change", (e)=>{
+  diaSeleccionado = e.target.value; // "" si lo borran, o "YYYY-MM-DD"
+  rerenderResumenFiltrado();
+});
+document.getElementById("btnLimpiarDia").addEventListener("click", ()=>{
+  diaSeleccionado = "";
+  document.getElementById("filtroDia").value = "";
+  rerenderResumenFiltrado();
+});
+
+function rerenderResumenFiltrado(){
+  // no volvemos a llamar poblarFiltroMes() aquí para no perder la selección del usuario
+  renderKPIs();
+  renderChartIngresosMes();
+  renderChartAutosMes();
+  renderChartMedioPago();
+  renderChartDiaSemana();
+  renderChartServicios();
+}
+
+/* ---------- Carga de datos + auto-refresh ---------- */
+async function cargarYRenderizar(esPrimeraVez){
+  try{
+    REGISTROS = await cargarYMapearDatos();
+    renderTodo();
+    document.getElementById("lastUpdate").textContent =
+      (USE_MOCK_DATA ? "⚠️ Mostrando datos de ejemplo — " : "Datos actualizados: ") +
+      new Date().toLocaleString("es-PE");
+  }catch(err){
+    if(esPrimeraVez){
+      document.getElementById("lastUpdate").innerHTML = '<div class="error-state">Error al cargar datos: ' + err.message + '</div>';
+    }
+    // si falla un auto-refresh silencioso, no rompemos la vista que ya tenía el usuario
+  }
+}
+
+function iniciarApp(){
+  cargarYRenderizar(true);
+  setInterval(()=>cargarYRenderizar(false), AUTO_REFRESH_MS);
+}
+
+/* ---------- Gate de acceso ---------- */
+(function initGate(){
+  const gate = document.getElementById("accessGate");
+  const yaEntro = sessionStorage.getItem("autoguru_ok") === "1";
+  if(yaEntro){
+    gate.style.display = "none";
+    iniciarApp();
+    return;
+  }
+  document.getElementById("gateBtn").addEventListener("click", intentar);
+  document.getElementById("gateInput").addEventListener("keydown", e=>{ if(e.key === "Enter") intentar(); });
+  function intentar(){
+    const val = document.getElementById("gateInput").value;
+    if(val === CLAVE_ACCESO){
+      sessionStorage.setItem("autoguru_ok","1");
+      gate.style.display = "none";
+      iniciarApp();
+    }else{
+      document.getElementById("gateError").textContent = "Clave incorrecta.";
+    }
+  }
+})();
+</script>
+</body>
+</html>
