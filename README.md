@@ -35,7 +35,3 @@ Google Form  →  Google Sheet  →  Apps Script (Code.gs)  →  JSON  →  inde
 - **Filtros de mes y de día puntual**, que recalculan todo el resumen al vuelo.
 - **Historial por placa:** buscador que muestra todas las visitas anteriores de un vehículo, total gastado y promedio, con paginación.
 - **Diseño mobile-first**, pensado para abrirse desde el celular del dueño del negocio.
-
-## 👤 Autor
-
-Proyecto desarrollado como solución interna para un negocio de lavado de autos.
