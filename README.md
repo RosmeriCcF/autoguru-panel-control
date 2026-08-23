@@ -1,6 +1,6 @@
 # 🚘 AutoGurú — Panel de control para Car Wash
 
-Dashboard web responsive para el control diario de un lavadero de autos: cuántos carros entran, cuánto se factura, qué servicios se piden más y el historial de lavados por placa. Nace para reemplazar un Google Sheet que, aunque tenía toda la data, se veía mal desde el celular.
+Dashboard web responsive para el control diario de autos: cuántos carros entran, cuánto se factura, qué servicios se piden más y el historial de lavados por placa. 
 
 ## 🎯 Objetivo
 
