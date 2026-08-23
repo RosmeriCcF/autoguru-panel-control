@@ -35,29 +35,7 @@ Google Form  →  Google Sheet  →  Apps Script (Code.gs)  →  JSON  →  inde
 - **Filtros de mes y de día puntual**, que recalculan todo el resumen al vuelo.
 - **Historial por placa:** buscador que muestra todas las visitas anteriores de un vehículo, total gastado y promedio, con paginación.
 - **Diseño mobile-first**, pensado para abrirse desde el celular del dueño del negocio.
-- **Pantalla de acceso con clave**, para que no cualquiera que encuentre el link vea la información del negocio.
-
-## 🔒 Nota sobre privacidad
-
-El sitio se publica en un repositorio público (requisito de GitHub Pages en el plan gratuito), protegido únicamente por una clave de acceso simple en el frontend. No es un mecanismo de seguridad robusto — cualquiera con conocimientos técnicos podría revisar el código fuente y evitarlo — pero es suficiente para el uso previsto (evitar visitas casuales al link).
-
-## 🛠️ Cómo desplegarlo desde cero
-
-1. Crear el Google Form y su Google Sheet asociado.
-2. Copiar `Code.gs` dentro de Extensiones → Apps Script del Sheet y publicarlo como aplicación web (acceso: "Cualquier usuario").
-3. Pegar la URL `/exec` generada en la constante `APPS_SCRIPT_URL` de `index.html`, y poner `USE_MOCK_DATA = false`.
-4. Subir `index.html` a este repositorio y activar GitHub Pages (rama `main`, carpeta raíz).
-5. Cambiar la clave de acceso en `CLAVE_ACCESO` antes de compartir el link.
-
-## 📚 Lo que aprendí / repasé con este proyecto
-
-- Uso de **Google Apps Script** como backend ligero para exponer datos de un Sheet como API JSON.
-- Manipulación de datos en el cliente con JavaScript puro (agrupaciones, normalización de texto, parsing de fechas sin bugs de zona horaria).
-- Visualización de datos con **Chart.js** (barras, dona, datalabels).
-- Diseño **responsive mobile-first** con CSS Grid y Flexbox.
-- Flujo de trabajo con **Git y GitHub** (control de versiones y despliegue con GitHub Pages).
-- Consideraciones reales de negocio: qué métricas importan para la toma de decisiones (ticket promedio, día pico, rentabilidad por servicio), más allá de solo "mostrar datos".
 
 ## 👤 Autor
 
-Proyecto desarrollado como solución interna para un negocio familiar de lavado de autos.
+Proyecto desarrollado como solución interna para un negocio de lavado de autos.
