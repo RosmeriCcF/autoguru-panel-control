@@ -346,6 +346,33 @@
     margin-right:6px;
   }
 
+  /* ---------- Tabla de detalle ---------- */
+  .detail-table-wrap{
+    overflow-x:auto;
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  table.detail-table{ font-size:13px; white-space:nowrap; }
+  table.detail-table td:nth-child(n), table.detail-table th:nth-child(n){
+    text-align:left;
+  }
+  table.detail-table td:last-child, table.detail-table th:last-child,
+  table.detail-table td:nth-child(6), table.detail-table th:nth-child(6){
+    text-align:right;
+  }
+  table.detail-table thead th{
+    position:sticky;
+    top:0;
+    background:var(--card);
+    cursor:pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  table.detail-table thead th:hover{ color:var(--teal-dark); }
+  table.detail-table thead th.sort-asc::after{ content:" ▲"; font-size:9px; }
+  table.detail-table thead th.sort-desc::after{ content:" ▼"; font-size:9px; }
+  table.detail-table tbody tr:hover{ background:var(--paper); }
+
   /* ---------- Access gate ---------- */
   #accessGate{
     position:fixed; inset:0;
@@ -412,6 +439,7 @@
 <nav class="tabs">
   <button class="tab-btn active" data-tab="tabResumen">📊 Resumen</button>
   <button class="tab-btn" data-tab="tabClientes">🔍 Clientes</button>
+  <button class="tab-btn" data-tab="tabDetalle">📋 Detalle</button>
 </nav>
 
 <main>
@@ -495,6 +523,38 @@
       <button class="search-btn" id="btnBuscar">Buscar</button>
     </div>
     <div id="searchResults"></div>
+  </div>
+</section>
+
+<section id="tabDetalle" class="tab-content">
+  <div class="section-title">Detalle de lavados</div>
+  <p class="filter-hint" style="margin:0 0 12px;">Usa el filtro de mes/día de la pestaña Resumen para acotar este listado.</p>
+  <div class="chart-card wide" style="padding:16px;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;">
+      <input type="text" id="detalleBuscar" placeholder="Buscar por placa, marca o tipo…"
+        style="flex:1 1 220px; min-width:200px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:13.5px; font-family:inherit;">
+      <span id="detalleContador" style="font-size:12.5px; color:var(--muted); white-space:nowrap;"></span>
+    </div>
+    <div class="detail-table-wrap">
+      <table class="mini-table detail-table" id="tablaDetalle">
+        <thead>
+          <tr>
+            <th data-sort="fecha">Fecha</th>
+            <th data-sort="marca">Marca</th>
+            <th data-sort="placa">Placa</th>
+            <th data-sort="tipo">Tipo lavado</th>
+            <th data-sort="medioPago">Medio de pago</th>
+            <th data-sort="factura">Factura</th>
+            <th data-sort="costo">Costo</th>
+          </tr>
+        </thead>
+        <tbody id="detalleBody"></tbody>
+        <tfoot>
+          <tr><td colspan="6">Total</td><td id="detalleTotal">—</td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div id="detallePagerWrap" style="text-align:center;margin-top:12px;"></div>
   </div>
 </section>
 
@@ -702,6 +762,7 @@ function renderTodo(){
   renderChartMedioPago();
   renderChartDiaSemana();
   renderChartServicios();
+  renderDetalle();
 }
 
 function renderKPIs(){
@@ -980,6 +1041,115 @@ function renderMasVisitas(){
 document.getElementById("btnBuscar").addEventListener("click", buscarPlaca);
 document.getElementById("placaInput").addEventListener("keydown", e=>{ if(e.key === "Enter") buscarPlaca(); });
 
+/* ---------- Tabla de detalle ---------- */
+const DETALLE_POR_PAGINA = 40;
+let detalleFiltroTexto = "";
+let detalleOrdenCampo = "fecha";
+let detalleOrdenDir = "desc"; // "asc" | "desc"
+let detalleFilasOrdenadas = [];
+let detalleMostradas = 0;
+
+function valorOrdenableDetalle(r, campo){
+  if(campo === "costo") return parseCosto(r.costo);
+  if(campo === "fecha") return clavePorFecha(r.fecha);
+  return String(r[campo] || "").toLowerCase();
+}
+
+function renderDetalle(){
+  const filtro = detalleFiltroTexto.trim().toLowerCase();
+  let datos = datosActivos();
+
+  if(filtro){
+    datos = datos.filter(r=>
+      String(r.placa||"").toLowerCase().includes(filtro) ||
+      String(r.marca||"").toLowerCase().includes(filtro) ||
+      String(r.tipo||"").toLowerCase().includes(filtro)
+    );
+  }
+
+  datos = datos.slice().sort((a,b)=>{
+    const va = valorOrdenableDetalle(a, detalleOrdenCampo);
+    const vb = valorOrdenableDetalle(b, detalleOrdenCampo);
+    let cmp = (typeof va === "number") ? (va - vb) : String(va).localeCompare(String(vb));
+    return detalleOrdenDir === "asc" ? cmp : -cmp;
+  });
+
+  detalleFilasOrdenadas = datos;
+  detalleMostradas = 0;
+
+  const body = document.getElementById("detalleBody");
+  if(!body) return; // por si el DOM aún no está listo
+
+  body.innerHTML = "";
+  const total = datos.reduce((s,r)=> s + parseCosto(r.costo), 0);
+  document.getElementById("detalleTotal").textContent = soles(total);
+  document.getElementById("detalleContador").textContent =
+    datos.length.toLocaleString("es-PE") + (datos.length === 1 ? " registro" : " registros");
+
+  document.querySelectorAll("#tablaDetalle thead th").forEach(th=>{
+    th.classList.remove("sort-asc","sort-desc");
+    if(th.dataset.sort === detalleOrdenCampo){
+      th.classList.add(detalleOrdenDir === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
+
+  if(datos.length === 0){
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No hay lavados que coincidan con el filtro.</td></tr>';
+    document.getElementById("detallePagerWrap").innerHTML = "";
+    return;
+  }
+
+  renderMasDetalle();
+}
+
+function renderMasDetalle(){
+  const body = document.getElementById("detalleBody");
+  const pagerWrap = document.getElementById("detallePagerWrap");
+  const siguienteLote = detalleFilasOrdenadas.slice(detalleMostradas, detalleMostradas + DETALLE_POR_PAGINA);
+
+  siguienteLote.forEach(r=>{
+    const tr = document.createElement("tr");
+    const esFacturado = normalizeHeader(r.factura || "") === "si";
+    tr.innerHTML = `
+      <td>${soloFecha(r.fecha)}</td>
+      <td>${r.marca || "—"}</td>
+      <td>${r.placa || "—"}</td>
+      <td>${r.tipo || "—"}</td>
+      <td>${r.medioPago || "—"}</td>
+      <td>${esFacturado ? "Sí" : "No"}</td>
+      <td>${soles(parseCosto(r.costo))}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  detalleMostradas += siguienteLote.length;
+
+  if(detalleMostradas < detalleFilasOrdenadas.length){
+    pagerWrap.innerHTML = `<button class="search-btn" id="btnMasDetalle" style="padding:10px 22px;">Mostrar más (${detalleFilasOrdenadas.length - detalleMostradas} restantes)</button>`;
+    document.getElementById("btnMasDetalle").addEventListener("click", renderMasDetalle);
+  }else{
+    pagerWrap.innerHTML = "";
+  }
+}
+
+document.getElementById("detalleBuscar").addEventListener("input", (e)=>{
+  detalleFiltroTexto = e.target.value;
+  renderDetalle();
+});
+
+document.querySelectorAll("#tablaDetalle thead th").forEach(th=>{
+  th.addEventListener("click", ()=>{
+    const campo = th.dataset.sort;
+    if(detalleOrdenCampo === campo){
+      detalleOrdenDir = detalleOrdenDir === "asc" ? "desc" : "asc";
+    }else{
+      detalleOrdenCampo = campo;
+      detalleOrdenDir = (campo === "costo" || campo === "fecha") ? "desc" : "asc";
+    }
+    renderDetalle();
+  });
+});
+
 /* ---------- Tabs ---------- */
 document.querySelectorAll(".tab-btn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
@@ -1015,6 +1185,7 @@ function rerenderResumenFiltrado(){
   renderChartMedioPago();
   renderChartDiaSemana();
   renderChartServicios();
+  renderDetalle();
 }
 
 /* ---------- Carga de datos + auto-refresh ---------- */
